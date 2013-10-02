@@ -1,0 +1,124 @@
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+
+
+<h2>Números narcisistas - WebWorker [Buffer]</h2>
+<strong>N = </strong> <input id='nn1' type="number" value="7"> (Cuidado, el tiempo para ejecutarlo es exponencialmente proporcional a N)
+
+<br><br>
+
+Workers = <input id='nn2' type="number" value='4'>
+
+<br><br>
+
+<input id='nn3' type="button" value="Ejecutar"> <input id='nn5' type="button" value="Parar">
+
+<br><br>
+
+<pre id='nn4'></pre>
+
+<script type="text/javascript">
+	function $(id){return (document.getElementById(id));}
+	var RES = [],
+		WKS = [],
+		buffer = [],
+		total = 0,
+		processed = 0,
+		run = false,
+		time;
+	
+	function init(n,workers){
+		if(run){
+			alert('Actualmente en ejecución.');
+			return false;
+		}
+		finish();
+		var	max = Math.pow(10,n),
+			part= max/workers;
+		RES = [];
+		WKS = [];
+		run = true;
+		total = processed = Number(workers);
+		time = (new Date()).getTime();
+
+		genBuffer(n);
+
+		for(var i=0;i<Number(workers);i++){
+			WKS[i] = new Worker('numNarcisita.js');
+			WKS[i].addEventListener('message',function(e){
+				if(e.data.status==0)
+					process();
+				else
+					add(e.data.n);
+			},false);
+			WKS[i].postMessage({
+				first: Math.floor(part*i),
+				last:  Math.floor(part*(i+1))-1,
+				buffer: buffer
+			});
+		}
+		show();
+		update();
+	}
+
+	function genBuffer(n){
+		for(var a=0;a<=n;a++){
+			buffer[a] = [];
+			for(var b=0;b<10;b++) buffer[a][b] = Math.pow(b,a)
+		}
+	}
+
+	function add(n){
+		RES.push(n)
+		RES.sort(function(a,b){return a-b});
+		show();
+	}
+
+	function process(nums){
+		processed--;
+		show();
+		if(processed==0){
+			run = false;
+			finish();
+		}
+	}
+
+	function show(){
+		RES.sort(function(a,b){return a-b});
+		var text = ' ';
+		text += processed!=0?run?'<font color="#E00">Running</font>':'<font color="#00E">Stopped</font>':'<font color="#00E">Finished</font>';
+		text += '	('+(total-processed)+'/'+total+')\n';
+		text +=	' Time		';
+		text +=	((new Date()).getTime()-time)/1000 + 's';
+		text +=	'\n-------------------------\n ';
+
+		for(var i=0;i<RES.length;i++){
+			text += RES[i]+'\n ';
+		}
+
+		$('nn4').innerHTML = text;
+	}
+
+	function update(){
+		if(run){
+			show();
+			factor = 250;
+			setTimeout(update,factor+Math.round(Math.random()*factor));
+		}
+	}
+
+	function finish(s){
+		if(!run) return false;
+		run = false;
+		for(var i=0;i<WKS.length;i++) WKS[i].terminate();
+		if(s) show();
+	}
+
+	$('nn3').addEventListener('click',function(){
+		init($('nn1').value,$('nn2').value);
+	},false);
+	$('nn5').addEventListener('click',function(){
+		finish(true);
+	},false);
+
+</script>
